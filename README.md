@@ -66,7 +66,7 @@ php artisan vendor:publish --tag=sanity-check-config
 - Packagist: <https://packagist.org/packages/bluedot-bd/sanity-check>
 - Source: <https://github.com/bluedot-bd/sanity-check>
 
-Requires PHP 8.2+ and Laravel 11+.
+Requires PHP 8.2+ and Laravel 11 or 12.
 
 ### Working from source
 
