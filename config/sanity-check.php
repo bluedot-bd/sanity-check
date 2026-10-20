@@ -346,6 +346,26 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Security advisories
+    |--------------------------------------------------------------------------
+    |
+    | "sanity-check:advisories" sends every installed package to
+    | https://packagist.org/api/security-advisories/ and warns about the
+    | advisories that affect the installed version. Scheduled once a day.
+    |
+    */
+
+    'advisories' => [
+        'url' => env('SANITY_CHECK_ADVISORIES_URL', 'https://packagist.org/api/security-advisories/'),
+        'timeout' => 10,
+        'batch_size' => 50,
+        'include_dev' => env('SANITY_CHECK_ADVISORIES_INCLUDE_DEV', true),
+        // Advisory ids (e.g. PKSA-xxxx-xxxx-xxxx) to accept as known risk.
+        'ignore' => [],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Schedule
     |--------------------------------------------------------------------------
     */
@@ -356,6 +376,10 @@ return [
         'environments' => ['production'],
         'without_overlapping' => true,
         'run_in_background' => true,
+
+        // Daily advisories scan (sanity-check:advisories).
+        'advisories_enabled' => env('SANITY_CHECK_ADVISORIES_SCHEDULE', true),
+        'advisories_cron' => env('SANITY_CHECK_ADVISORIES_CRON', '0 3 * * *'),
     ],
 
 ];

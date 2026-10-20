@@ -35,8 +35,7 @@ authorisation rules, infrastructure, or a determined attacker. What it does is
 catch the basic, boring, recurring faults - the ones that keep happening - so you
 are not the one who finds out last.
 
-Two capabilities, one config file:
-
+Three capabilities, one config file:
 
 1. **`MaliciousPayloadFilter` middleware** — rejects requests whose payload contains
    `eval`, `shell_exec`, `exec`, `system`, backticks, `$(...)`, stream wrappers,
@@ -47,6 +46,9 @@ Two capabilities, one config file:
    admin dashboards, log viewer, sensitive public files, ecosystem plugins and
    security headers). Failures can trigger notifications and actions such as
    enabling maintenance mode.
+3. **`sanity-check:advisories` command** — sends the installed packages to the
+   Packagist security advisories API and warns about the advisories that affect
+   your versions; runs once a day.
 
 ## Installation
 
@@ -198,6 +200,46 @@ self-signed environments you control.
 This is the classic "someone rebuilt the server and forgot `APP_ENV`" case: the
 domain is real, customers are on it, but the app thinks it is local - so debug
 pages, verbose errors and test mailers are live.
+
+## Security advisories
+
+`php artisan sanity-check:advisories` sends every installed package (read from
+`vendor/composer/installed.json`, falling back to `composer.lock`) to
+`https://packagist.org/api/security-advisories/?packages[]=vendor/package`, then
+keeps only the advisories whose `affectedVersions` really match the installed
+version:
+
+```bash
+php artisan sanity-check:advisories
+php artisan sanity-check:advisories --json
+php artisan sanity-check:advisories --ignore=PKSA-xxxx-xxxx-xxxx
+php artisan sanity-check:advisories --no-notify
+```
+
+- exit code is non-zero when an advisory affects an installed package, so it also
+  works as a CI or monitoring gate,
+- findings are logged (`critical`, throttled to once an hour) and sent through the
+  configured notification channels if `notifications.enabled` is on,
+- packages are queried in batches (`batch_size`) to keep the URL short.
+
+```php
+'advisories' => [
+    'url' => env('SANITY_CHECK_ADVISORIES_URL', 'https://packagist.org/api/security-advisories/'),
+    'timeout' => 10,
+    'batch_size' => 50,
+    'include_dev' => env('SANITY_CHECK_ADVISORIES_INCLUDE_DEV', true),
+    'ignore' => [], // PKSA ids accepted as known risk
+],
+```
+
+It is scheduled **once a day** (03:00 by default):
+
+```php
+'schedule' => [
+    'advisories_enabled' => env('SANITY_CHECK_ADVISORIES_SCHEDULE', true),
+    'advisories_cron' => env('SANITY_CHECK_ADVISORIES_CRON', '0 3 * * *'),
+],
+```
 
 ## Notifications
 

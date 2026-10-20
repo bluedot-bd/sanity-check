@@ -4,6 +4,7 @@ namespace BluedotBd\SanityCheck;
 
 use BluedotBd\SanityCheck\Actions\MaintenanceAction;
 use BluedotBd\SanityCheck\Console\Commands\SanityCheckCommand;
+use BluedotBd\SanityCheck\Console\Commands\SecurityAdvisoriesCommand;
 use BluedotBd\SanityCheck\Http\Middleware\MaliciousPayloadFilter;
 use BluedotBd\SanityCheck\Notifications\Notifier;
 use BluedotBd\SanityCheck\Support\PayloadInspector;
@@ -59,7 +60,7 @@ class SanityCheckServiceProvider extends ServiceProvider
         $this->registerMiddleware();
 
         if ($this->app->runningInConsole()) {
-            $this->commands([SanityCheckCommand::class]);
+            $this->commands([SanityCheckCommand::class, SecurityAdvisoriesCommand::class]);
 
             $this->registerSchedule();
         }
@@ -85,19 +86,36 @@ class SanityCheckServiceProvider extends ServiceProvider
         }
 
         $this->callAfterResolving(Schedule::class, function (Schedule $schedule) use ($config) {
-            $event = $schedule->command('sanity-check:run')->cron((string) ($config['cron'] ?? '*/5 * * * *'));
+            $this->scheduleCommand($schedule, 'sanity-check:run', (string) ($config['cron'] ?? '*/5 * * * *'), $config);
 
-            if ($config['without_overlapping'] ?? true) {
-                $event->withoutOverlapping();
-            }
-
-            if ($config['run_in_background'] ?? true) {
-                $event->runInBackground();
-            }
-
-            if (! empty($config['environments'])) {
-                $event->environments((array) $config['environments']);
+            if ($config['advisories_enabled'] ?? true) {
+                $this->scheduleCommand(
+                    $schedule,
+                    'sanity-check:advisories',
+                    (string) ($config['advisories_cron'] ?? '0 3 * * *'),
+                    $config
+                );
             }
         });
+    }
+
+    /**
+     * @param  array<string, mixed>  $config
+     */
+    private function scheduleCommand(Schedule $schedule, string $command, string $cron, array $config): void
+    {
+        $event = $schedule->command($command)->cron($cron);
+
+        if ($config['without_overlapping'] ?? true) {
+            $event->withoutOverlapping();
+        }
+
+        if ($config['run_in_background'] ?? true) {
+            $event->runInBackground();
+        }
+
+        if (! empty($config['environments'])) {
+            $event->environments((array) $config['environments']);
+        }
     }
 }

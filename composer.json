@@ -23,6 +23,7 @@
     ],
     "require": {
         "php": "^8.2",
+        "composer/semver": "^3.4",
         "illuminate/bus": "^11.0|^12.0",
         "illuminate/cache": "^11.0|^12.0",
         "illuminate/console": "^11.0|^12.0",
