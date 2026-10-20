@@ -104,6 +104,10 @@ class SecurityAdvisoriesCommand extends Command
         if ($findings === []) {
             $this->components->info("No advisory affects the {$checked} installed packages.");
 
+            foreach ($errors as $error) {
+                $this->components->warn($error);
+            }
+
             return;
         }
 

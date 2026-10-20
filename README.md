@@ -49,6 +49,9 @@ Three capabilities, one config file:
 3. **`sanity-check:advisories` command** — sends the installed packages to the
    Packagist security advisories API and warns about the advisories that affect
    your versions; runs once a day.
+4. **`sanity-check:npm-advisories` command** — does the same for the npm
+   packages in `package-lock.json` / `package.json` via the npm registry advisory
+   API; also runs once a day.
 
 ## Installation
 
@@ -238,6 +241,49 @@ It is scheduled **once a day** (03:00 by default):
 'schedule' => [
     'advisories_enabled' => env('SANITY_CHECK_ADVISORIES_SCHEDULE', true),
     'advisories_cron' => env('SANITY_CHECK_ADVISORIES_CRON', '0 3 * * *'),
+],
+```
+
+## npm advisories
+
+`php artisan sanity-check:npm-advisories` audits the front-end dependencies the
+same way `npm audit` does, using
+`https://registry.npmjs.org/-/npm/v1/security/advisories/bulk`:
+
+```bash
+php artisan sanity-check:npm-advisories
+php artisan sanity-check:npm-advisories --json
+php artisan sanity-check:npm-advisories --path=resources/js/package.json
+php artisan sanity-check:npm-advisories --ignore=1106913
+php artisan sanity-check:npm-advisories --no-notify
+```
+
+- reads `package-lock.json` (or `npm-shrinkwrap.json`) next to `package.json`, so
+  transitive dependencies are covered; without a lock file it falls back to the
+  `dependencies` / `devDependencies` ranges (approximate, lowest version),
+- only reports advisories whose `vulnerable_versions` range matches the installed
+  version, sorted by severity,
+- exit code is non-zero when something is affected; findings are logged
+  (`critical`, throttled) and sent through the notification channels.
+
+```php
+'npm_advisories' => [
+    'url' => env('SANITY_CHECK_NPM_ADVISORIES_URL', 'https://registry.npmjs.org/-/npm/v1/security/advisories/bulk'),
+    'path' => env('SANITY_CHECK_PACKAGE_JSON'), // defaults to base_path('package.json')
+    'timeout' => 15,
+    'batch_size' => 50,
+    'include_dev' => env('SANITY_CHECK_NPM_INCLUDE_DEV', true),
+    'severities' => ['critical', 'high', 'moderate', 'low'], // empty = all
+    'ignore' => [], // advisory ids accepted as known risk
+],
+```
+
+Scheduled **once a day** at 03:15 (15 minutes after the Composer scan):
+
+```php
+'schedule' => [
+    'npm_advisories_enabled' => env('SANITY_CHECK_NPM_ADVISORIES_SCHEDULE', true),
+    'npm_advisories_cron' => env('SANITY_CHECK_NPM_ADVISORIES_CRON', '15 3 * * *'),
 ],
 ```
 

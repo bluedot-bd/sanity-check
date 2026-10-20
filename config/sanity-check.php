@@ -366,6 +366,30 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | npm advisories
+    |--------------------------------------------------------------------------
+    |
+    | "sanity-check:npm-advisories" sends the packages from package-lock.json
+    | (or package.json) to https://registry.npmjs.org/-/npm/v1/security/advisories/bulk
+    | and warns about the advisories that affect the installed version.
+    |
+    */
+
+    'npm_advisories' => [
+        'url' => env('SANITY_CHECK_NPM_ADVISORIES_URL', 'https://registry.npmjs.org/-/npm/v1/security/advisories/bulk'),
+        // Defaults to base_path('package.json').
+        'path' => env('SANITY_CHECK_PACKAGE_JSON'),
+        'timeout' => 15,
+        'batch_size' => 50,
+        'include_dev' => env('SANITY_CHECK_NPM_INCLUDE_DEV', true),
+        // Severities to report: critical, high, moderate, low (empty = all).
+        'severities' => ['critical', 'high', 'moderate', 'low'],
+        // Advisory ids to accept as known risk.
+        'ignore' => [],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Schedule
     |--------------------------------------------------------------------------
     */
@@ -380,6 +404,10 @@ return [
         // Daily advisories scan (sanity-check:advisories).
         'advisories_enabled' => env('SANITY_CHECK_ADVISORIES_SCHEDULE', true),
         'advisories_cron' => env('SANITY_CHECK_ADVISORIES_CRON', '0 3 * * *'),
+
+        // Daily npm advisories scan (sanity-check:npm-advisories).
+        'npm_advisories_enabled' => env('SANITY_CHECK_NPM_ADVISORIES_SCHEDULE', true),
+        'npm_advisories_cron' => env('SANITY_CHECK_NPM_ADVISORIES_CRON', '15 3 * * *'),
     ],
 
 ];

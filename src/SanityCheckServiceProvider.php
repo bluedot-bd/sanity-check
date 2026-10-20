@@ -3,6 +3,7 @@
 namespace BluedotBd\SanityCheck;
 
 use BluedotBd\SanityCheck\Actions\MaintenanceAction;
+use BluedotBd\SanityCheck\Console\Commands\NpmAdvisoriesCommand;
 use BluedotBd\SanityCheck\Console\Commands\SanityCheckCommand;
 use BluedotBd\SanityCheck\Console\Commands\SecurityAdvisoriesCommand;
 use BluedotBd\SanityCheck\Http\Middleware\MaliciousPayloadFilter;
@@ -60,7 +61,7 @@ class SanityCheckServiceProvider extends ServiceProvider
         $this->registerMiddleware();
 
         if ($this->app->runningInConsole()) {
-            $this->commands([SanityCheckCommand::class, SecurityAdvisoriesCommand::class]);
+            $this->commands([SanityCheckCommand::class, SecurityAdvisoriesCommand::class, NpmAdvisoriesCommand::class]);
 
             $this->registerSchedule();
         }
@@ -93,6 +94,15 @@ class SanityCheckServiceProvider extends ServiceProvider
                     $schedule,
                     'sanity-check:advisories',
                     (string) ($config['advisories_cron'] ?? '0 3 * * *'),
+                    $config
+                );
+            }
+
+            if ($config['npm_advisories_enabled'] ?? true) {
+                $this->scheduleCommand(
+                    $schedule,
+                    'sanity-check:npm-advisories',
+                    (string) ($config['npm_advisories_cron'] ?? '15 3 * * *'),
                     $config
                 );
             }
