@@ -1,0 +1,51 @@
+{
+    "name": "bluedot-bd/sanity-check",
+    "description": "Malicious payload filter and security posture checks for Laravel applications.",
+    "keywords": ["laravel", "security", "posture", "middleware", "monitoring", "alerting"],
+    "license": "MIT",
+    "homepage": "https://github.com/bluedot-bd/sanity-check",
+    "support": {
+        "issues": "https://github.com/bluedot-bd/sanity-check/issues",
+        "source": "https://github.com/bluedot-bd/sanity-check"
+    },
+    "authors": [
+        {
+            "name": "Bluedot Technology Ltd.",
+            "email": "saiful@bluedot.ltd"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/cache": "^11.0",
+        "illuminate/console": "^11.0",
+        "illuminate/http": "^11.0",
+        "illuminate/mail": "^11.0",
+        "illuminate/support": "^11.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0",
+        "phpunit/phpunit": "^10.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "BluedotBd\\SanityCheck\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "BluedotBd\\SanityCheck\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "BluedotBd\\SanityCheck\\SanityCheckServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
