@@ -109,6 +109,12 @@ return [
             'max_result_age_hours' => 24,
         ],
 
+        'totem_exposure' => [
+            'enabled' => true,
+            'path' => env('TOTEM_WEB_ROUTE_PREFIX', 'totem'),
+            'signature' => '~vendor/totem/css/app\.css|<title>\s*Totem~i',
+        ],
+
         'debug' => [
             'enabled' => true,
         ],
@@ -229,10 +235,12 @@ return [
                     'signature' => '~id="horizon"|Laravel</strong>\s*Horizon|window\.Horizon~i',
                 ],
                 'totem' => [
-                    'enabled' => true,
+                    'enabled' => false,
                     'label' => 'Totem dashboard',
                     'path' => env('TOTEM_WEB_ROUTE_PREFIX', 'totem'),
                     'signature' => '~/vendor/totem/css/app\.css|<title>\s*Totem~i',
+                    // Covered by the dedicated "totem_exposure" check so that a
+                    // publicly readable Totem can trigger maintenance mode.
                 ],
                 'telescope' => [
                     'enabled' => true,
@@ -337,7 +345,9 @@ return [
 
         'maintenance' => [
             'enabled' => env('SANITY_CHECK_MAINTENANCE', true),
-            'trigger_on' => ['env_exposure', 'debug', 'debugbar'],
+            // Totem can run arbitrary artisan commands, so a public Totem is
+            // treated like a public .env: take the site down immediately.
+            'trigger_on' => ['env_exposure', 'totem_exposure', 'debug', 'debugbar'],
             'secret' => env('SANITY_CHECK_MAINTENANCE_SECRET'),
             'retry' => env('SANITY_CHECK_MAINTENANCE_RETRY'),
         ],

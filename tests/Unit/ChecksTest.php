@@ -6,6 +6,7 @@ use BluedotBd\SanityCheck\Checks\DomainEnvironmentCheck;
 use BluedotBd\SanityCheck\Checks\EnvFileExposureCheck;
 use BluedotBd\SanityCheck\Checks\SecurityHeadersCheck;
 use BluedotBd\SanityCheck\Checks\SslCertificateCheck;
+use BluedotBd\SanityCheck\Checks\TotemExposureCheck;
 use BluedotBd\SanityCheck\Report;
 use BluedotBd\SanityCheck\Results\Result;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -141,6 +142,37 @@ class ChecksTest extends TestCase
         ] as $host) {
             $this->assertFalse(DomainEnvironmentCheck::isRealDomain($host), "{$host} should not be a real domain");
         }
+    }
+
+    public function test_detects_public_totem_markup(): void
+    {
+        foreach ([
+            '<!doctype html><html><head><link href="/vendor/totem/css/app.css" rel="stylesheet"></head></html>',
+            '<html><head><title>Totem</title></head><body>Tasks</body></html>',
+            '<html><head><title>
+                Totem</title></head></html>',
+        ] as $body) {
+            $this->assertTrue(TotemExposureCheck::bodyLooksLikeTotem($body), 'Totem markup should be detected');
+        }
+    }
+
+    public function test_ignores_unrelated_http_200_bodies(): void
+    {
+        foreach ([
+            '',
+            '<!doctype html><html><head><title>Welcome</title></head></html>',
+            '<html><body>403 Forbidden</body></html>',
+            '{"message":"Unauthenticated."}',
+            '<html><head><title>Totally unrelated</title></head></html>',
+        ] as $body) {
+            $this->assertFalse(TotemExposureCheck::bodyLooksLikeTotem($body), 'Totem markup should not be detected');
+        }
+    }
+
+    public function test_totem_exposure_signature_is_configurable(): void
+    {
+        $this->assertTrue(TotemExposureCheck::bodyLooksLikeTotem('<h1>Task Scheduler</h1>', '~Task Scheduler~'));
+        $this->assertFalse(TotemExposureCheck::bodyLooksLikeTotem('<h1>Totem</h1>', '~Task Scheduler~'));
     }
 
     public function test_report_summarises_and_fingerprints_results(): void

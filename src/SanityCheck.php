@@ -19,6 +19,7 @@ class SanityCheck
     private const CHECKS = [
         'horizon' => Checks\HorizonCheck::class,
         'totem' => Checks\TotemCheck::class,
+        'totem_exposure' => Checks\TotemExposureCheck::class,
         'debug' => Checks\DebugModeCheck::class,
         'debugbar' => Checks\DebugbarCheck::class,
         'nightwatch' => Checks\NightwatchCheck::class,

@@ -41,11 +41,11 @@ Three capabilities, one config file:
    `eval`, `shell_exec`, `exec`, `system`, backticks, `$(...)`, stream wrappers,
    PHP tags and similar code-execution signatures (all pattern-driven).
 2. **`sanity-check:run` command** — a scheduled self-check of the application's
-   security posture (Horizon, Totem, Nightwatch, debug/debugbar, APP_KEY, HTTPS,
-   domain vs. environment, session cookies, CSRF, TLS expiry, `.env` exposure,
-   admin dashboards, log viewer, sensitive public files, ecosystem plugins and
-   security headers). Failures can trigger notifications and actions such as
-   enabling maintenance mode.
+   security posture (Horizon, Totem, publicly reachable Totem, Nightwatch,
+   debug/debugbar, APP_KEY, HTTPS, domain vs. environment, session cookies, CSRF,
+   TLS expiry, `.env` exposure, admin dashboards, log viewer, sensitive public
+   files, ecosystem plugins and security headers). Failures can trigger
+   notifications and actions such as enabling maintenance mode.
 3. **`sanity-check:advisories` command** — sends the installed packages to the
    Packagist security advisories API and warns about the advisories that affect
    your versions; runs once a day.
@@ -134,6 +134,7 @@ php artisan security:check          # command alias
 | --- | --- |
 | `horizon` | Horizon master supervisors exist and are not all paused |
 | `totem` | Totem enabled, active tasks, tasks registered on the scheduler, latest `task_results.ran_at` |
+| `totem_exposure` | Totem dashboard is readable without authentication — **triggers maintenance mode by default** |
 | `debug` | `APP_DEBUG` is off outside local/testing |
 | `debugbar` | Debugbar not enabled in production and `/_debugbar/open` not reachable |
 | `nightwatch` | Nightwatch installed but disabled in production (monitoring gap) or missing `NIGHTWATCH_TOKEN` |
@@ -147,7 +148,7 @@ php artisan security:check          # command alias
 | `csrf` | `VerifyCsrfToken` is present in the `web` middleware group |
 | `env_permissions` | `.env` is not world-readable (POSIX only) |
 | `env_exposure` | No `.env*` in `public/` and `GET {url}/.env` does not return environment contents |
-| `dashboards` | `/horizon`, `/totem`, `/telescope` are not anonymously readable |
+| `dashboards` | `/horizon` and `/telescope` are not anonymously readable (Totem has its own check) |
 | `sensitive_files` | `.git/config`, old `.env` copies, logs, phpinfo, Ignition, composer.json |
 | `security_headers` | `X-Frame-Options`/CSP, `nosniff`, CSP and HSTS on the homepage |
 
@@ -317,7 +318,8 @@ the others.
     'maintenance' => [
         'enabled' => env('SANITY_CHECK_MAINTENANCE', true),
         // Which failing check keys put the site into maintenance. '*' = any failure.
-        'trigger_on' => ['env_exposure', 'debug', 'debugbar'],
+        // totem_exposure is included because Totem can run arbitrary artisan commands.
+        'trigger_on' => ['env_exposure', 'totem_exposure', 'debug', 'debugbar'],
         'secret' => env('SANITY_CHECK_MAINTENANCE_SECRET'), // bypass URL
         'retry' => env('SANITY_CHECK_MAINTENANCE_RETRY'),
     ],
