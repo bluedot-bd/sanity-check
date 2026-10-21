@@ -71,26 +71,7 @@ php artisan vendor:publish --tag=sanity-check-config
 - Packagist: <https://packagist.org/packages/bluedot-bd/sanity-check>
 - Source: <https://github.com/bluedot-bd/sanity-check>
 
-Requires PHP 8.2+ and Laravel 11 or 12.
-
-### Working from source
-
-This application also ships the package inside `packages/sanity-check` and wires
-it through a Composer path repository, so local changes are picked up without a
-release:
-
-```json
-"repositories": [
-    { "type": "path", "url": "packages/sanity-check", "options": { "symlink": false } }
-]
-```
-
-Because Composer copies the package into `vendor/` on Windows (junctions are not
-available on every filesystem), re-sync after changing package code:
-
-```bash
-composer reinstall bluedot-bd/sanity-check
-```
+Requires PHP 8.2+ and Laravel 11, 12 or 13.
 
 ## Payload filter
 
