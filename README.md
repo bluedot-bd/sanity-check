@@ -126,7 +126,7 @@ php artisan security:check          # command alias
 | `https` | `APP_URL` uses HTTPS |
 | `domain` | `APP_URL` looks like a real public domain while `APP_ENV` is not production (or production with a non-public host) |
 | `session` | `secure`, `http_only`, `same_site` cookie flags |
-| `csrf` | `VerifyCsrfToken` is present in the `web` middleware group |
+| `csrf` | CSRF middleware (`PreventRequestForgery`, or the older `ValidateCsrfToken`/`VerifyCsrfToken`) is present in the `web` middleware group |
 | `env_permissions` | `.env` is not world-readable (POSIX only) |
 | `env_exposure` | No `.env*` in `public/` and `GET {url}/.env` does not return environment contents |
 | `dashboards` | `/horizon` and `/telescope` are not anonymously readable (Totem has its own check) |

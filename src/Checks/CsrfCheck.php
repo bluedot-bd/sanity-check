@@ -9,6 +9,18 @@ use Throwable;
 
 class CsrfCheck extends Check
 {
+    /**
+     * Laravel 11 renamed VerifyCsrfToken to PreventRequestForgery and kept the
+     * old name as a deprecated alias, so every name has to be accepted.
+     *
+     * @var array<int, string>
+     */
+    private const MIDDLEWARE = [
+        'PreventRequestForgery',
+        'ValidateCsrfToken',
+        'VerifyCsrfToken',
+    ];
+
     public function key(): string
     {
         return 'csrf';
@@ -28,13 +40,31 @@ class CsrfCheck extends Check
             return $this->warn('Could not inspect the web middleware group.');
         }
 
-        $hasCsrf = collect($web)->contains(fn ($middleware) => str_contains((string) $middleware, 'VerifyCsrfToken'));
+        $found = static::csrfMiddleware($web);
 
-        if (! $hasCsrf) {
-            return $this->fail('VerifyCsrfToken is missing from the web middleware group.');
+        if ($found === null) {
+            return $this->fail('No CSRF middleware (PreventRequestForgery) is in the web middleware group.');
         }
 
-        return $this->pass('VerifyCsrfToken is active on the web group.');
+        return $this->pass("{$found} is active on the web group.");
+    }
+
+    /**
+     * Name of the CSRF middleware in the given group, if any.
+     *
+     * @param  array<int, string>  $middleware
+     */
+    public static function csrfMiddleware(array $middleware): ?string
+    {
+        foreach ($middleware as $class) {
+            foreach (self::MIDDLEWARE as $name) {
+                if (str_contains((string) $class, $name)) {
+                    return $name;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**

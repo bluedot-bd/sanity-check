@@ -2,6 +2,7 @@
 
 namespace BluedotBd\SanityCheck\Tests\Unit;
 
+use BluedotBd\SanityCheck\Checks\CsrfCheck;
 use BluedotBd\SanityCheck\Checks\DomainEnvironmentCheck;
 use BluedotBd\SanityCheck\Checks\EnvFileExposureCheck;
 use BluedotBd\SanityCheck\Checks\SecurityHeadersCheck;
@@ -52,6 +53,31 @@ class ChecksTest extends TestCase
     public function test_ignores_non_env_responses(string $body): void
     {
         $this->assertFalse(EnvFileExposureCheck::bodyLooksLikeEnvFile($body));
+    }
+
+    public static function csrfMiddlewareGroups(): array
+    {
+        return [
+            'laravel 12+' => ['Illuminate\\Foundation\\Http\\Middleware\\PreventRequestForgery', 'PreventRequestForgery'],
+            'laravel 11' => ['Illuminate\\Foundation\\Http\\Middleware\\ValidateCsrfToken', 'ValidateCsrfToken'],
+            'laravel 10' => ['Illuminate\\Foundation\\Http\\Middleware\\VerifyCsrfToken', 'VerifyCsrfToken'],
+            'app alias' => ['App\\Http\\Middleware\\VerifyCsrfToken', 'VerifyCsrfToken'],
+        ];
+    }
+
+    #[DataProvider('csrfMiddlewareGroups')]
+    public function test_csrf_check_accepts_every_name_laravel_used(string $middleware, string $expected): void
+    {
+        $this->assertSame($expected, CsrfCheck::csrfMiddleware([$middleware]));
+    }
+
+    public function test_csrf_check_reports_a_group_without_protection(): void
+    {
+        $this->assertNull(CsrfCheck::csrfMiddleware([
+            'Illuminate\\Cookie\\Middleware\\EncryptCookies',
+            'Illuminate\\Session\\Middleware\\StartSession',
+        ]));
+        $this->assertNull(CsrfCheck::csrfMiddleware([]));
     }
 
     public function test_all_security_headers_present(): void

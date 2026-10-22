@@ -10,7 +10,7 @@
         "alerting"
     ],
     "license": "MIT",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "homepage": "https://github.com/bluedot-bd/sanity-check",
     "support": {
         "issues": "https://github.com/bluedot-bd/sanity-check/issues",
