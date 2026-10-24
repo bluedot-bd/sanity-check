@@ -40,6 +40,37 @@ class Notifier
             return [];
         }
 
+        return $this->dispatch($report);
+    }
+
+    /**
+     * Announce a run that found nothing, so a silent schedule can be told
+     * apart from a dead one. Never sent when the run has findings - a real
+     * report always wins.
+     *
+     * @return array<string, string> channel => outcome
+     */
+    public function sendHeartbeat(Report $report): array
+    {
+        if (! $this->shouldSendHeartbeat($report)) {
+            return [];
+        }
+
+        return $this->dispatch(new Report($report->results, $report->url, true));
+    }
+
+    public function shouldSendHeartbeat(Report $report): bool
+    {
+        return (bool) ($this->config['enabled'] ?? false)
+            && (bool) ($this->config['heartbeat']['enabled'] ?? false)
+            && $report->isClean();
+    }
+
+    /**
+     * @return array<string, string> channel => outcome
+     */
+    private function dispatch(Report $report): array
+    {
         $channels = $this->enabledChannels();
 
         if ($channels === []) {

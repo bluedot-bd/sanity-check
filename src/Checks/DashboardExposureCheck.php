@@ -92,7 +92,11 @@ class DashboardExposureCheck extends Check
                 continue;
             }
 
-            $url = $this->resolveUrl((string) $key, (string) ($target['path'] ?? $key));
+            $url = $this->resolveUrl(
+                (string) $key,
+                $target['path'] ?? null,
+                $target['domain'] ?? null
+            );
 
             if ($url === null) {
                 continue;
@@ -117,16 +121,40 @@ class DashboardExposureCheck extends Check
         };
     }
 
-    private function resolveUrl(string $key, string $path): ?string
+    /**
+     * Where the dashboard is deployed - which the user configures in the
+     * package's own file, not here - plus an optional override from this
+     * package's config. Probing APP_URL when the dashboard lives on another
+     * host returns 404 and would pass silently.
+     */
+    private function resolveUrl(string $key, ?string $pathOverride, ?string $domainOverride): ?string
     {
-        $path = trim($path, '/');
+        [$defaultPath, $defaultDomain] = $this->defaults($key);
 
-        if ($key === 'horizon' && ($domain = config('horizon.domain'))) {
-            $scheme = parse_url((string) $this->probe->baseUrl(), PHP_URL_SCHEME) ?: 'https';
+        $path = is_string($pathOverride) && trim($pathOverride) !== ''
+            ? $pathOverride
+            : $defaultPath;
 
-            return $scheme . '://' . $domain . '/' . $path;
-        }
+        $domain = is_string($domainOverride) && trim($domainOverride) !== ''
+            ? $domainOverride
+            : $defaultDomain;
 
-        return $this->probe->url($path);
+        return $this->probe->url((string) $path, $domain);
+    }
+
+    /**
+     * @return array{0: ?string, 1: mixed}
+     */
+    private function defaults(string $key): array
+    {
+        return match ($key) {
+            'horizon' => [config('horizon.path', 'horizon'), config('horizon.domain')],
+            'totem' => [
+                config('totem.web.route_prefix', 'totem'),
+                config('totem.allowed_hosts') ?: config('app.admin_domain'),
+            ],
+            'telescope' => [config('telescope.path', 'telescope'), config('telescope.domain')],
+            default => [null, null],
+        };
     }
 }

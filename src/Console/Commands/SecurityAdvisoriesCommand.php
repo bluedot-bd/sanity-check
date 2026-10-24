@@ -42,15 +42,29 @@ class SecurityAdvisoriesCommand extends Command
         $this->log($result['findings'], $report);
 
         if (! $this->option('no-notify')) {
-            foreach ($notifier->send($report) as $channel => $outcome) {
-                $this->components->twoColumnDetail(
-                    'Notify: ' . $channel,
-                    $outcome === 'sent' ? '<fg=green>sent</>' : '<fg=yellow>' . $outcome . '</>'
-                );
+            $this->reportOutcomes($notifier->send($report));
+
+            // Nothing found: still say so, otherwise a healthy schedule and a
+            // dead one both look like silence.
+            if ($result['findings'] === [] && $result['errors'] === []) {
+                $this->reportOutcomes($notifier->sendHeartbeat($report));
             }
         }
 
         return $result['findings'] === [] ? self::SUCCESS : self::FAILURE;
+    }
+
+    /**
+     * @param  array<string, string>  $outcomes
+     */
+    private function reportOutcomes(array $outcomes): void
+    {
+        foreach ($outcomes as $channel => $outcome) {
+            $this->components->twoColumnDetail(
+                'Notify: ' . $channel,
+                $outcome === 'sent' ? '<fg=green>sent</>' : '<fg=yellow>' . $outcome . '</>'
+            );
+        }
     }
 
     /**

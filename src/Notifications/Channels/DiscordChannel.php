@@ -13,6 +13,8 @@ class DiscordChannel implements Channel
 
     private const COLOR_WARNING = 16776960;
 
+    private const COLOR_OK = 5763719;
+
     /**
      * @param  array<string, mixed>  $config
      */
@@ -36,6 +38,7 @@ class DiscordChannel implements Channel
         $embeds = array_values(array_filter([
             $this->embed('Failed checks', $report->failures(), self::COLOR_FAILURE),
             $this->embed('Warnings', $report->warnings(), self::COLOR_WARNING),
+            $this->heartbeatEmbed($report),
         ]));
 
         Http::timeout((int) ($this->config['timeout'] ?? 5))->post($url, [
@@ -46,6 +49,14 @@ class DiscordChannel implements Channel
 
     private function headline(Report $report): string
     {
+        if ($report->heartbeat) {
+            return sprintf(
+                'SanityCheck on %s (%s): daily check ran clean - no issues detected. SanityCheck is alive.',
+                (string) config('app.name'),
+                app()->environment()
+            );
+        }
+
         $summary = $report->summary();
 
         return sprintf(
@@ -55,6 +66,24 @@ class DiscordChannel implements Channel
             $summary['fail'],
             $summary['warn']
         );
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function heartbeatEmbed(Report $report): ?array
+    {
+        if (! $report->heartbeat || ! $report->isClean()) {
+            return null;
+        }
+
+        $lines = array_map(fn (Result $result) => '**' . $result->label . '** — ' . $result->detail, $report->results);
+
+        return [
+            'title' => 'All clear',
+            'description' => implode("\n", $lines) ?: 'No findings.',
+            'color' => self::COLOR_OK,
+        ];
     }
 
     /**

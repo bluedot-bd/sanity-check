@@ -37,6 +37,8 @@ class WebhookChannel implements Channel
                 'environment' => app()->environment(),
                 'url' => $report->url,
                 'checked_at' => now()->toIso8601String(),
+                'heartbeat' => $report->heartbeat,
+                'ok' => $report->isClean(),
                 'summary' => $report->summary(),
                 'failures' => array_map(fn (Result $result) => $result->toArray(), $report->failures()),
                 'warnings' => array_map(fn (Result $result) => $result->toArray(), $report->warnings()),

@@ -32,6 +32,7 @@ class SlackChannel implements Channel
         $attachments = array_values(array_filter([
             $this->attachment('Failed checks', $report->failures(), 'danger'),
             $this->attachment('Warnings', $report->warnings(), 'warning'),
+            $this->heartbeatAttachment($report),
         ]));
 
         $payload = [
@@ -48,6 +49,14 @@ class SlackChannel implements Channel
 
     private function headline(Report $report): string
     {
+        if ($report->heartbeat) {
+            return sprintf(
+                '*SanityCheck* on %s (%s): daily check ran clean - no issues detected. SanityCheck is alive.',
+                (string) config('app.name'),
+                app()->environment()
+            );
+        }
+
         $summary = $report->summary();
 
         return sprintf(
@@ -57,6 +66,25 @@ class SlackChannel implements Channel
             $summary['fail'],
             $summary['warn']
         );
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function heartbeatAttachment(Report $report): ?array
+    {
+        if (! $report->heartbeat || ! $report->isClean()) {
+            return null;
+        }
+
+        $lines = array_map(fn (Result $result) => '• *' . $result->label . '* — ' . $result->detail, $report->results);
+
+        return [
+            'color' => 'good',
+            'title' => 'All clear',
+            'text' => implode("\n", $lines) ?: 'No findings.',
+            'mrkdwn_in' => ['text'],
+        ];
     }
 
     /**

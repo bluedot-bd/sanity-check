@@ -37,13 +37,9 @@ class ProbeClient
         return $this->url;
     }
 
-    public function url(string $path): ?string
+    public function url(string $path, array|string|null $domain = null): ?string
     {
-        if ($this->url === null) {
-            return null;
-        }
-
-        return $this->url . '/' . ltrim($path, '/');
+        return DashboardUrl::build($this->url, $path, $domain);
     }
 
     public function isHttps(): bool

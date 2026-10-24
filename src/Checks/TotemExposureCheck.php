@@ -39,8 +39,7 @@ class TotemExposureCheck extends Check
             return $this->pass('Remote probes are disabled.');
         }
 
-        $path = trim((string) config('sanity-check.checks.totem_exposure.path', 'totem'), '/');
-        $url = $this->probe->url($path);
+        $url = $this->probe->url($this->path(), $this->domain());
 
         if ($url === null) {
             return $this->warn('APP_URL is not configured - Totem probe skipped.');
@@ -70,5 +69,36 @@ class TotemExposureCheck extends Check
         $signature = $signature ?: self::DEFAULT_SIGNATURE;
 
         return @preg_match($signature, substr($body, 0, 8192)) === 1;
+    }
+
+    /**
+     * Totem's URI comes from its own config, so a custom route_prefix is
+     * probed as deployed instead of the default "totem".
+     */
+    private function path(): string
+    {
+        $override = config('sanity-check.checks.totem_exposure.path');
+
+        if (is_string($override) && trim($override) !== '') {
+            return trim($override, '/');
+        }
+
+        return trim((string) config('totem.web.route_prefix', 'totem'), '/');
+    }
+
+    /**
+     * Totem is served from TOTEM_ALLOWED_HOSTS (falling back to ADMIN_DOMAIN),
+     * so that is the host to probe. APP_URL is normally a different domain, and
+     * its 404 would read as "not exposed".
+     */
+    private function domain(): ?string
+    {
+        $override = config('sanity-check.checks.totem_exposure.domain');
+
+        if (is_string($override) && trim($override) !== '') {
+            return $override;
+        }
+
+        return config('totem.allowed_hosts') ?: config('app.admin_domain');
     }
 }

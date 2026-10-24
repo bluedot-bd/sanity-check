@@ -111,7 +111,11 @@ return [
 
         'totem_exposure' => [
             'enabled' => true,
-            'path' => env('TOTEM_WEB_ROUTE_PREFIX', 'totem'),
+            // Null means "read it from config/totem.php" (web.route_prefix and
+            // allowed_hosts), so a dashboard moved by the user is still probed
+            // where it actually lives. Set them to override that.
+            'path' => null,
+            'domain' => null,
             'signature' => '~vendor/totem/css/app\.css|<title>\s*Totem~i',
         ],
 
@@ -227,17 +231,24 @@ return [
 
         'dashboards' => [
             'enabled' => true,
+            /*
+             * Each target is probed where the user configured it to live:
+             * "path"/"domain" are optional overrides, and null means "read
+             * config/horizon.php, config/totem.php or config/telescope.php".
+             */
             'targets' => [
                 'horizon' => [
                     'enabled' => true,
                     'label' => 'Horizon dashboard',
-                    'path' => env('HORIZON_PATH', 'horizon'),
+                    'path' => null,
+                    'domain' => null,
                     'signature' => '~id="horizon"|Laravel</strong>\s*Horizon|window\.Horizon~i',
                 ],
                 'totem' => [
                     'enabled' => false,
                     'label' => 'Totem dashboard',
-                    'path' => env('TOTEM_WEB_ROUTE_PREFIX', 'totem'),
+                    'path' => null,
+                    'domain' => null,
                     'signature' => '~/vendor/totem/css/app\.css|<title>\s*Totem~i',
                     // Covered by the dedicated "totem_exposure" check so that a
                     // publicly readable Totem can trigger maintenance mode.
@@ -245,7 +256,8 @@ return [
                 'telescope' => [
                     'enabled' => true,
                     'label' => 'Telescope',
-                    'path' => 'telescope',
+                    'path' => null,
+                    'domain' => null,
                     'signature' => '~/telescope/css|Telescope</title>~i',
                 ],
             ],
@@ -289,11 +301,18 @@ return [
     | Sent when at least one result has a status listed in "statuses".
     | Identical reports are throttled for "throttle_seconds".
     |
+    | "heartbeat" also announces a run that found nothing, so a silently
+    | healthy schedule can be told apart from one that stopped running.
+    |
     */
 
     'notifications' => [
 
         'enabled' => env('SANITY_CHECK_NOTIFY', false),
+
+        'heartbeat' => [
+            'enabled' => env('SANITY_CHECK_HEARTBEAT', false),
+        ],
 
         'statuses' => ['fail'],
 

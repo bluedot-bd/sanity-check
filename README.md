@@ -6,6 +6,8 @@
 
 Security sanity checks and a malicious payload filter for Laravel applications.
 
+![SanityCheck report](sanity-check.png)
+
 ## Why SanityCheck?
 
 We all know what a product should avoid: debug mode left on, an `.env` sitting in
@@ -136,6 +138,34 @@ php artisan security:check          # command alias
 Every check can be disabled with `'enabled' => false` and remote probes can be
 skipped per run with `--skip-remote` (or globally with `SANITY_CHECK_SKIP_REMOTE`).
 
+### Dashboard URLs
+
+Horizon and Totem are usually moved off `APP_URL` — each has its own domain and
+URI, and the exposure checks probe the URL they are actually served from:
+
+| Dashboard | Host read from | URI read from |
+| --- | --- | --- |
+| Horizon | `config('horizon.domain')` (`HORIZON_DOMAIN`) | `config('horizon.path')` (`HORIZON_PATH`) |
+| Totem | `config('totem.allowed_hosts')` (`TOTEM_ALLOWED_HOSTS`), falling back to `config('app.admin_domain')` (`ADMIN_DOMAIN`) | `config('totem.web.route_prefix')` (`TOTEM_WEB_ROUTE_PREFIX`) |
+| Telescope | `config('telescope.domain')` | `config('telescope.path')` |
+
+A bare host, a full URL and a comma-separated list are all accepted; the first
+host wins and the `APP_URL` scheme is reused. Without a configured domain the
+probe uses `APP_URL`.
+
+`checks.totem_exposure.path` / `checks.totem_exposure.domain` and each
+`checks.dashboards.targets.*.path` / `.domain` are optional overrides — leave them
+`null` and the values above are used:
+
+```php
+'totem_exposure' => [
+    'enabled' => true,
+    'path' => null,    // null = config('totem.web.route_prefix')
+    'domain' => null,  // null = TOTEM_ALLOWED_HOSTS or ADMIN_DOMAIN
+    'signature' => '~vendor/totem/css/app\.css|<title>\s*Totem~i',
+],
+```
+
 ### Ecosystem plugins
 
 `checks.plugins.packages` maps a package to its expected production state:
@@ -205,6 +235,8 @@ php artisan sanity-check:advisories --no-notify
   works as a CI or monitoring gate,
 - findings are logged (`critical`, throttled to once an hour) and sent through the
   configured notification channels if `notifications.enabled` is on,
+- when nothing is found and `notifications.heartbeat.enabled` is on, the clean run
+  is announced anyway — see [Notifications](#notifications),
 - packages are queried in batches (`batch_size`) to keep the URL short.
 
 ```php
@@ -272,21 +304,71 @@ Scheduled **once a day** at 03:15 (15 minutes after the Composer scan):
 ## Notifications
 
 Sent when a result matches `notifications.statuses` (default: `fail`). Identical
-reports are throttled by `throttle_seconds` (default one hour).
+reports are throttled by `throttle_seconds` (default one hour). Nothing is sent
+until `SANITY_CHECK_NOTIFY=true` **and** the individual channel is enabled.
 
 ```php
 'notifications' => [
     'enabled' => env('SANITY_CHECK_NOTIFY', false),
+    'heartbeat' => ['enabled' => env('SANITY_CHECK_HEARTBEAT', false)],
     'statuses' => ['fail'],
-    'throttle_seconds' => 3600,
+    'throttle_seconds' => env('SANITY_CHECK_NOTIFY_THROTTLE', 3600),
     'channels' => [
-        'mail' => ['enabled' => true, 'to' => ['ops@example.com'], 'subject' => 'SanityCheck'],
-        'webhook' => ['enabled' => true, 'url' => env('SANITY_CHECK_WEBHOOK_URL'), 'headers' => []],
-        'slack' => ['enabled' => true, 'webhook_url' => env('SANITY_CHECK_SLACK_WEBHOOK')],
-        'discord' => ['enabled' => true, 'webhook_url' => env('SANITY_CHECK_DISCORD_WEBHOOK')],
+        'mail' => ['enabled' => env('SANITY_CHECK_MAIL', false), 'to' => ['ops@example.com'], 'subject' => env('SANITY_CHECK_MAIL_SUBJECT', 'SanityCheck security report')],
+        'webhook' => ['enabled' => env('SANITY_CHECK_WEBHOOK', false), 'url' => env('SANITY_CHECK_WEBHOOK_URL'), 'headers' => []],
+        'slack' => ['enabled' => env('SANITY_CHECK_SLACK', false), 'webhook_url' => env('SANITY_CHECK_SLACK_WEBHOOK'), 'channel' => env('SANITY_CHECK_SLACK_CHANNEL')],
+        'discord' => ['enabled' => env('SANITY_CHECK_DISCORD', false), 'webhook_url' => env('SANITY_CHECK_DISCORD_WEBHOOK')],
     ],
 ],
 ```
+
+`.env` — enable only the channels you actually have:
+
+```dotenv
+# Master switch: nothing is sent while this is false
+SANITY_CHECK_NOTIFY=true
+# Announce clean daily advisory runs too ("SanityCheck is alive")
+SANITY_CHECK_HEARTBEAT=true
+# Suppress repeats of an identical report, in seconds
+SANITY_CHECK_NOTIFY_THROTTLE=3600
+
+# E-mail. Uses your normal Laravel mailer, so MAIL_* must already work.
+# SANITY_CHECK_MAIL_TO takes a comma-separated list.
+SANITY_CHECK_MAIL=true
+SANITY_CHECK_MAIL_TO=ops@example.com,oncall@example.com
+SANITY_CHECK_MAIL_SUBJECT="SanityCheck security report"
+
+# JSON webhook
+SANITY_CHECK_WEBHOOK=true
+SANITY_CHECK_WEBHOOK_URL=https://example.com/hooks/sanity-check
+
+# Slack
+SANITY_CHECK_SLACK=true
+SANITY_CHECK_SLACK_WEBHOOK=<your-slack-incoming-webhook-url>
+SANITY_CHECK_SLACK_CHANNEL=#sanity-check
+
+# Discord
+SANITY_CHECK_DISCORD=true
+SANITY_CHECK_DISCORD_WEBHOOK=<your-discord-webhook-url>
+```
+
+Leave a channel's `SANITY_CHECK_*` flag out (or `false`) and it stays disabled
+even when `SANITY_CHECK_NOTIFY=true`. After editing `.env`, re-run
+`php artisan config:cache` if your deployment caches config.
+
+### Heartbeat
+
+`SANITY_CHECK_HEARTBEAT=true` also announces runs that found nothing, so a
+silently healthy schedule can be told apart from one that stopped running. It
+applies to the daily `sanity-check:advisories` run:
+
+> SanityCheck on MyApp (production): daily check ran clean - no issues detected. SanityCheck is alive.
+
+A heartbeat is never sent when the run has findings — a real report always wins —
+and it is throttled by the same `throttle_seconds`, so repeated manual runs do not
+spam the channel. The webhook payload carries `"heartbeat": true` and `"ok": true`
+for machine consumers; Slack and Discord get an "All clear" block, and the mail
+subject ends in `- all clear`.
 
 Payloads: JSON (`webhook`), Slack `attachments`, Discord `embeds`, and a Mailable
 with the full report. Each channel is isolated — one failing channel never blocks

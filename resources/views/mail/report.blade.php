@@ -1,6 +1,13 @@
 @php($summary = $report->summary())
 <h2>SanityCheck report</h2>
 
+@if ($report->heartbeat)
+    <p style="color: #15803d;">
+        <strong>All clear.</strong> The scheduled check ran and found nothing to report &mdash;
+        SanityCheck is alive.
+    </p>
+@endif
+
 <p>
     <strong>{{ config('app.name') }}</strong> ({{ app()->environment() }})<br>
     @if ($report->url)

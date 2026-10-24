@@ -20,8 +20,12 @@ class ReportMail extends Mailable
     {
         $summary = $this->report->summary();
 
+        $subject = $this->report->heartbeat
+            ? sprintf('%s - all clear', $this->reportSubject)
+            : sprintf('%s - %d failed, %d warnings', $this->reportSubject, $summary['fail'], $summary['warn']);
+
         return $this
-            ->subject(sprintf('%s - %d failed, %d warnings', $this->reportSubject, $summary['fail'], $summary['warn']))
+            ->subject($subject)
             ->view('sanity-check::mail.report', ['report' => $this->report]);
     }
 }

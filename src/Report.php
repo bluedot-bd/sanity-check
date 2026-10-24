@@ -8,11 +8,22 @@ final class Report
 {
     /**
      * @param  array<int, Result>  $results
+     * @param  bool  $heartbeat  Marks a run that found nothing and is being
+     *                           announced anyway (see Notifier::sendHeartbeat).
      */
     public function __construct(
         public readonly array $results,
         public readonly ?string $url = null,
+        public readonly bool $heartbeat = false,
     ) {
+    }
+
+    /**
+     * No failures and no warnings.
+     */
+    public function isClean(): bool
+    {
+        return $this->failures() === [] && $this->warnings() === [];
     }
 
     /**
